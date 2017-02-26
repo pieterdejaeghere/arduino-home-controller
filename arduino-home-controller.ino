@@ -4,13 +4,28 @@
 #include "FastRunningMedian.h"
 
 
-#define ONE_WIRE_BUS 2
+/*
+ * sketch for a home automation setup
+ * 
+ * Communication
+ *   - expects commands for its sensors on the USB port
+ *   - reports on events on the USB port
+ *   - activates pins based on USB port events
+ * Wiring
+ *   - reads one DHT22 temperature/humidity sensor attached to pin 5 (short wire)
+ *   - reads multiple one wire dallas temperature sensors attached to pin 2 (long wire)
+ *   - watches for events on pin 6 for motion sensor
+ *   - watches for events on pin 7 for motion sensor
+ *   - watches for events on pin A0 for water meter reed contact
+ *   - enables pin 4 for a period of time (flood light)
+ *   - enables pin 3 for a period of time (flood light)
+ *   - enables pin A5 for a period of time (flood light)
+ */
 
 
-
-const int inritPin = 6;    // the number of the pushbutton pin
-const int tuinPin = 7;    // the number of the pushbutton pin
-const int ledPin = 13;      // the number of the LED pin
+const int driveWayPin = 6;
+const int gardenPin = 7;
+const int ledPin = 13;
 
 const int dht22Pin = 5;
 
@@ -19,6 +34,7 @@ const int relay1Pin = 3;
 const int relay2Pin = A5;
 
 const int tempPin = 2;
+#define ONE_WIRE_BUS 2
 OneWire oneWire(ONE_WIRE_BUS);
 
 DallasTemperature sensors(&oneWire);
@@ -39,17 +55,17 @@ int A0isHigh = LOW;
 
 
 
-int inritValue;
-int lastInritValue = HIGH;
-int inritWatcher = HIGH;
-int lastInritEntry;
-int lastInritLeft;
+int driveWayValue;
+int lastdriveWayValue = HIGH;
+int driveWayWatcher = HIGH;
+int lastdriveWayEntry;
+int lastdriveWayLeft;
 
-int tuinValue;
-int lastTuinValue = HIGH;
-int tuinWatcher = HIGH;
-int lastTuinEntry;
-int lastTuinLeft;
+int gardenValue;
+int lastgardenValue = HIGH;
+int gardenWatcher = HIGH;
+int lastgardenEntry;
+int lastgardenLeft;
 
 int relay0value = LOW;
 long lastRelay0active;
@@ -64,8 +80,8 @@ char incomingSerialChar;
 
 void setup() {
   dht.begin();
-  pinMode(inritPin, INPUT_PULLUP);
-  pinMode(tuinPin, INPUT_PULLUP);
+  pinMode(driveWayPin, INPUT_PULLUP);
+  pinMode(gardenPin, INPUT_PULLUP);
   pinMode(A0, INPUT_PULLUP);
   pinMode(ledPin, OUTPUT);
   pinMode(relay0Pin, OUTPUT);
@@ -132,61 +148,61 @@ void printAddress(DeviceAddress addr) {
 
 
 void loop() {
-   inritValue = digitalRead(inritPin);
-   if(lastInritValue == HIGH && inritValue == HIGH){
+   driveWayValue = digitalRead(driveWayPin);
+   if(lastdriveWayValue == HIGH && driveWayValue == HIGH){
    // nothing is there
-     if((millis() - lastInritLeft)>300 && inritWatcher == LOW){
-       inritWatcher = HIGH;
-       Serial.println("inrit gone");
+     if((millis() - lastdriveWayLeft)>300 && driveWayWatcher == LOW){
+       driveWayWatcher = HIGH;
+       Serial.println("driveWay gone");
      }
    }
-   else if(lastInritValue == LOW && inritValue == LOW){
+   else if(lastdriveWayValue == LOW && driveWayValue == LOW){
    // it is still there
-     if((millis() - lastInritEntry)>300 && inritWatcher == HIGH){
+     if((millis() - lastdriveWayEntry)>300 && driveWayWatcher == HIGH){
        // already up for 300ms, lets do something
-       inritWatcher = LOW;
-       Serial.println("inrit seen");
+       driveWayWatcher = LOW;
+       Serial.println("driveWay seen");
        }
    }
-   else if(lastInritValue == HIGH && inritValue == LOW){
+   else if(lastdriveWayValue == HIGH && driveWayValue == LOW){
    // it has appeared
-     lastInritEntry = millis();
-     lastInritLeft = millis();
+     lastdriveWayEntry = millis();
+     lastdriveWayLeft = millis();
    }
-   else if(lastInritValue == LOW && inritValue == HIGH){
+   else if(lastdriveWayValue == LOW && driveWayValue == HIGH){
    // it has disappeared
-     lastInritEntry = millis();
-     lastInritLeft = millis();
+     lastdriveWayEntry = millis();
+     lastdriveWayLeft = millis();
    }
-   lastInritValue = inritValue;
+   lastdriveWayValue = driveWayValue;
 //////////////////////////////////////////////////////////////////////////////////////
-   tuinValue = digitalRead(tuinPin);
-   if(lastTuinValue == HIGH && tuinValue == HIGH){
+   gardenValue = digitalRead(gardenPin);
+   if(lastgardenValue == HIGH && gardenValue == HIGH){
    // nothing is there
-     if((millis() - lastTuinLeft)>300 && tuinWatcher == LOW){
-       tuinWatcher = HIGH;
-       Serial.println("tuin gone");
+     if((millis() - lastgardenLeft)>300 && gardenWatcher == LOW){
+       gardenWatcher = HIGH;
+       Serial.println("garden gone");
      }
    }
-   else if(lastTuinValue == LOW && tuinValue == LOW){
+   else if(lastgardenValue == LOW && gardenValue == LOW){
    // it is still there
-     if((millis() - lastTuinEntry)>300 && tuinWatcher == HIGH){
+     if((millis() - lastgardenEntry)>300 && gardenWatcher == HIGH){
        // already up for 300ms, lets do something
-       tuinWatcher = LOW;
-       Serial.println("tuin seen");
+       gardenWatcher = LOW;
+       Serial.println("garden seen");
        }
    }
-   else if(lastTuinValue == HIGH && tuinValue == LOW){
+   else if(lastgardenValue == HIGH && gardenValue == LOW){
    // it has appeared
-     lastTuinEntry = millis();
-     lastTuinLeft = millis();
+     lastgardenEntry = millis();
+     lastgardenLeft = millis();
    }
-   else if(lastTuinValue == LOW && tuinValue == HIGH){
+   else if(lastgardenValue == LOW && gardenValue == HIGH){
    // it has disappeared
-     lastTuinEntry = millis();
-     lastTuinLeft = millis();
+     lastgardenEntry = millis();
+     lastgardenLeft = millis();
    }
-   lastTuinValue = tuinValue;
+   lastgardenValue = gardenValue;
 //////////////////////////////////////////////////////////////////////
     // lets put relays down if they weren't active recently
     if(millis() - lastRelay0active > 60000){
@@ -212,6 +228,8 @@ void loop() {
      }  
 //////////////////////////////////////////////////////////////////////    
 /*
+ *  Analog measurements, no longer necessary as it is now done via digital reed contact
+ * 
     int A0Value = analogRead(A0);
     myA0Median.addValue(A0Value);
     int m = myA0Median.getMedian();
